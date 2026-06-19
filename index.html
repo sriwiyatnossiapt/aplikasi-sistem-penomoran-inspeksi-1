@@ -78,7 +78,7 @@
   </div>
 
   <script>
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwmPG3ZFU7FUXn1hyr3XiaLujSvbF-eTpvMaKq2g3PjSTecRgFyp6q5X8YadR6_n6s6/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxqGfRdZ7v7jQiPNfj4FVjkNvIJQBAkvce1mSolrRSQMBkpC5XgJmhJR00vu9eMlpAt/exec";
 
     function updateTimestampField() {
       const now = new Date();
@@ -92,71 +92,72 @@
     
     updateTimestampField();
     setInterval(updateTimestampField, 1000);
-
-    async function submitForm(e) {
-      e.preventDefault();
-      
-      const btn = document.getElementById('btnSubmit');
-      const resultArea = document.getElementById('resultArea');
-      const resultStatus = document.getElementById('resultStatus');
-      const resultDetail = document.getElementById('resultDetail');
-      
-      btn.disabled = true;
-      btn.innerText = "Memproses...";
-      btn.classList.add('opacity-50');
-      
-      const eUsaha = document.getElementById('jenisUsaha');
-      const eInspeksi = document.getElementById('jenisInspeksi');
-      const eMetode = document.getElementById('metodeInspeksi');
-      const eJudulBA = document.getElementById('judulBeritaAcara');
-      const eTimestamp = document.getElementById('timestampInput').value;
-      
-      const payload = {
-        timestamp: eTimestamp,
-        judulBeritaAcara: eJudulBA.value,
-        jenisUsaha: eUsaha.value,
-        jenisUsahaText: eUsaha.options[eUsaha.selectedIndex].text,
-        jenisInspeksiText: eInspeksi.options[eInspeksi.selectedIndex].text,
-        metodeInspeksi: eMetode.value,
-        metodeInspeksiText: eMetode.options[eMetode.selectedIndex].text
-      };
-      
-      try {
-       const response = await fetch(GAS_WEB_APP_URL, {
-  method: 'POST',
-  mode: 'no-cors',               // tetap no-cors
-  headers: {
-    'Content-Type': 'text/plain' // diubah dari application/json
-  },
-  body: JSON.stringify(payload)
-});
-        
-        eJudulBA.value = "";
-        eUsaha.value = "";
-        eInspeksi.value = "";
-        eMetode.value = "";
-        
-        // Render preview nomor lokal (Tahun 2 digit & pemisah titik)
-        const tgl = new Date();
-        const tahun2Digit = tgl.getFullYear().toString().slice(-2);
-        const bulan = ("0" + (tgl.getMonth() + 1)).slice(-2);
-        
-        resultArea.classList.remove('hidden', 'bg-red-100', 'text-red-800');
-        resultArea.classList.add('bg-green-100', 'text-green-800');
-        resultStatus.innerText = "✓ Data Dikirim ke Spreadsheet!";
-        resultDetail.innerText = `${tahun2Digit}.${bulan}.${payload.jenisUsaha}.${payload.metodeInspeksi}.---`;
-        
-      } catch (error) {
-        resultArea.classList.remove('hidden', 'bg-green-100', 'text-green-800');
-        resultArea.classList.add('bg-red-100', 'text-red-800');
-        resultStatus.innerText = "✗ Gagal Mengirim Data:";
-        resultDetail.innerText = error.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Generate & Simpan Nomor";
-        btn.classList.remove('opacity-50');
-      }
+async function submitForm(e) {
+  e.preventDefault();
+  
+  const btn = document.getElementById('btnSubmit');
+  const resultArea = document.getElementById('resultArea');
+  const resultStatus = document.getElementById('resultStatus');
+  const resultDetail = document.getElementById('resultDetail');
+  
+  btn.disabled = true;
+  btn.innerText = "Memproses...";
+  btn.classList.add('opacity-50');
+  
+  const eUsaha = document.getElementById('jenisUsaha');
+  const eInspeksi = document.getElementById('jenisInspeksi');
+  const eMetode = document.getElementById('metodeInspeksi');
+  const eJudulBA = document.getElementById('judulBeritaAcara');
+  const eTimestamp = document.getElementById('timestampInput').value;
+  
+  const payload = {
+    timestamp: eTimestamp,
+    judulBeritaAcara: eJudulBA.value,
+    jenisUsaha: eUsaha.value,
+    jenisUsahaText: eUsaha.options[eUsaha.selectedIndex].text,
+    jenisInspeksiText: eInspeksi.options[eInspeksi.selectedIndex].text,
+    metodeInspeksi: eMetode.value,
+    metodeInspeksiText: eMetode.options[eMetode.selectedIndex].text
+  };
+  
+  try {
+    const response = await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const result = await response.json();
+    
+    if (result.status === 'success') {
+      resultArea.classList.remove('hidden', 'bg-red-100', 'text-red-800');
+      resultArea.classList.add('bg-green-100', 'text-green-800');
+      resultStatus.innerText = "✓ Data Tersimpan!";
+      resultDetail.innerText = result.nomor;  // ← nomor dari GAS
+    } else {
+      throw new Error(result.message || 'Gagal menyimpan');
     }
+    
+    // Kosongkan form
+    eJudulBA.value = "";
+    eUsaha.value = "";
+    eInspeksi.value = "";
+    eMetode.value = "";
+    
+  } catch (error) {
+    resultArea.classList.remove('hidden', 'bg-green-100', 'text-green-800');
+    resultArea.classList.add('bg-red-100', 'text-red-800');
+    resultStatus.innerText = "✗ Gagal:";
+    resultDetail.innerText = error.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Generate & Simpan Nomor";
+    btn.classList.remove('opacity-50');
+  }
+}
+    
   </script>
 </body>
 </html>
