@@ -122,14 +122,14 @@
       };
       
       try {
-        const response = await fetch(GAS_WEB_APP_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
+       const response = await fetch(GAS_WEB_APP_URL, {
+  method: 'POST',
+  mode: 'no-cors',               // tetap no-cors
+  headers: {
+    'Content-Type': 'text/plain' // diubah dari application/json
+  },
+  body: JSON.stringify(payload)
+});
         
         eJudulBA.value = "";
         eUsaha.value = "";
