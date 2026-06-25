@@ -57,6 +57,7 @@
           <div class="card">
             <div class="card-header"><h4 class="mb-0"><i class="fas fa-pen-alt me-2"></i>Formulir Inspeksi</h4></div>
             <div class="card-body">
+              <!-- Tambahkan id="inspectionForm" -->
               <form id="inspectionForm" onsubmit="submitForm(event)">
 
                 <div class="row mb-3">
@@ -125,6 +126,7 @@
                 </div>
               </form>
 
+              <!-- Result area -->
               <div id="resultArea" class="result-box d-none">
                 <p id="resultStatus" class="fw-bold mb-1"></p>
                 <p id="resultDetail" class="nomor"></p>
@@ -140,8 +142,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxIwnwzVkmh8NirCY8-pR6Ltey1BOZZy862Juo2Sb_FTH7GXyj3dX8z3xrAjPkPDJ9H/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDVEDVT8asXmjBvhYZRAKSLsnrCDyzMj8MgGxg66ZYf7_pAr8kTX5mLQOo4tbjZAO9/exec";
 
+    // Timestamp
     function updateTimestampField() {
       const now = new Date();
       const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -150,6 +153,7 @@
     updateTimestampField();
     setInterval(updateTimestampField, 1000);
 
+    // Double-click copy
     document.getElementById('resultDetail').addEventListener('dblclick', function() {
       const text = this.innerText;
       if (text) {
@@ -158,10 +162,27 @@
       }
     });
 
+    // ====== MODIFIKASI: Sembunyikan hasil saat mulai input ======
+    // Ambil form dan result area
+    const form = document.getElementById('inspectionForm');
+    const resultArea = document.getElementById('resultArea');
+
+    // Saat ada fokus di dalam form (termasuk select, input, dll), sembunyikan hasil
+    form.addEventListener('focusin', function(e) {
+      // Kecuali jika yang difokus adalah tombol submit (agar tidak hilang saat klik submit)
+      if (e.target && e.target.type !== 'submit' && e.target.tagName !== 'BUTTON') {
+        // Tambahkan class d-none untuk menyembunyikan
+        resultArea.classList.add('d-none');
+        // Reset isi status dan detail (opsional)
+        document.getElementById('resultStatus').innerText = '';
+        document.getElementById('resultDetail').innerText = '';
+      }
+    });
+
+    // ====== SUBMIT FORM ======
     async function submitForm(e) {
       e.preventDefault();
       const btn = document.getElementById('btnSubmit');
-      const resultArea = document.getElementById('resultArea');
       const resultStatus = document.getElementById('resultStatus');
       const resultDetail = document.getElementById('resultDetail');
 
@@ -180,13 +201,14 @@
         judulBeritaAcara: eJudulBA.value,
         jenisUsaha: eUsaha.value,
         jenisUsahaText: eUsaha.options[eUsaha.selectedIndex].text,
-        jenisInspeksi: eInspeksi.value,           // <-- value (ST, RT, dll)
+        jenisInspeksi: eInspeksi.value,
         jenisInspeksiText: eInspeksi.options[eInspeksi.selectedIndex].text,
         metodeInspeksi: eMetode.value,
         metodeInspeksiText: eMetode.options[eMetode.selectedIndex].text,
         petugas: ePetugas.value
       };
 
+      // Tampilkan result area (akan diisi)
       resultArea.classList.remove('d-none');
 
       try {
