@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Penomoran Inspeksi</title>
-  <!-- Tambahkan baris ini untuk PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <link rel="apple-touch-icon" href="icon.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -45,11 +41,19 @@
 </head>
 <body>
 
-  <div class="sidebar">
+ <div class="sidebar">
     <div class="brand"><i class="fas fa-clipboard-list me-2"></i>Sistem Penomoran</div>
     <nav class="nav flex-column">
       <a href="#" class="nav-link active"><i class="fas fa-edit"></i> Input Data</a>
       <a href="#" class="nav-link spreadsheet-link" onclick="window.open('https://docs.google.com/spreadsheets/d/1zRrJUe2x6nO62HiEKX73mspp_OnCnna4_LgcoUmhSHs/edit?gid=0#gid=0','_blank')"><i class="fas fa-table"></i> Buka Spreadsheet</a>
+      
+      <!-- Menu Baru: Lihat Renlak -->
+      <a href="#" class="nav-link text-info mt-2" onclick="showRenlakModal(event)"><i class="fas fa-tasks"></i> Lihat Renlak</a>
+      
+      <!-- Keterangan Renlak -->
+      <div class="renlak-info-box mt-2 p-2 rounded small">
+        <i class="fas fa-info-circle me-1"></i> Menampilkan otomatis sarana yang <b>belum diperiksa</b>. Inputan baru akan mengeliminasi sarana dari daftar ini.
+      </div>
     </nav>
     <div class="footer-text"><i class="fas fa-shield-alt me-1"></i> v1.0</div>
   </div>
@@ -61,9 +65,9 @@
           <div class="card">
             <div class="card-header"><h4 class="mb-0"><i class="fas fa-pen-alt me-2"></i>Formulir Inspeksi</h4></div>
             <div class="card-body">
-              <!-- Tambahkan id="inspectionForm" -->
               <form id="inspectionForm" onsubmit="submitForm(event)">
 
+                <!-- Timestamp -->
                 <div class="row mb-3">
                   <div class="col-12">
                     <label for="timestampInput" class="form-label">Timestamp</label>
@@ -71,6 +75,7 @@
                   </div>
                 </div>
 
+                <!-- Judul Berita Acara -->
                 <div class="row mb-3">
                   <div class="col-12">
                     <label for="judulBeritaAcara" class="form-label">Judul Berita Acara</label>
@@ -78,6 +83,7 @@
                   </div>
                 </div>
 
+                <!-- Jenis Usaha + Jenis Inspeksi -->
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <label for="jenisUsaha" class="form-label">Jenis Usaha</label>
@@ -107,6 +113,7 @@
                   </div>
                 </div>
 
+                <!-- Metode Inspeksi + Petugas -->
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <label for="metodeInspeksi" class="form-label">Metode Inspeksi</label>
@@ -123,6 +130,7 @@
                   </div>
                 </div>
 
+                <!-- Tombol Submit -->
                 <div class="d-grid gap-2 mt-4">
                   <button type="submit" id="btnSubmit" class="btn btn-primary btn-lg">
                     <i class="fas fa-save me-2"></i>Generate & Simpan Nomor
@@ -130,7 +138,7 @@
                 </div>
               </form>
 
-              <!-- Result area -->
+              <!-- Hasil -->
               <div id="resultArea" class="result-box d-none">
                 <p id="resultStatus" class="fw-bold mb-1"></p>
                 <p id="resultDetail" class="nomor"></p>
@@ -146,9 +154,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // ============================
+    //  KONFIGURASI
+    // ============================
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDVEDVT8asXmjBvhYZRAKSLsnrCDyzMj8MgGxg66ZYf7_pAr8kTX5mLQOo4tbjZAO9/exec";
 
-    // Timestamp
+    // ============================
+    //  TIMESTAMP
+    // ============================
     function updateTimestampField() {
       const now = new Date();
       const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -157,7 +170,9 @@
     updateTimestampField();
     setInterval(updateTimestampField, 1000);
 
-    // Double-click copy
+    // ============================
+    //  DOUBLE-CLICK COPY
+    // ============================
     document.getElementById('resultDetail').addEventListener('dblclick', function() {
       const text = this.innerText;
       if (text) {
@@ -166,27 +181,62 @@
       }
     });
 
-    // ====== MODIFIKASI: Sembunyikan hasil saat mulai input ======
-    // Ambil form dan result area
-    const form = document.getElementById('inspectionForm');
-    const resultArea = document.getElementById('resultArea');
+    // ============================
+    //  AUTO-FILL PETUGAS dari localStorage
+    // ============================
+    const inputPetugas = document.getElementById('petugas');
+    const petugasTerakhir = localStorage.getItem('petugasTerakhir');
+    if (petugasTerakhir) {
+      inputPetugas.value = petugasTerakhir;
+    }
 
-    // Saat ada fokus di dalam form (termasuk select, input, dll), sembunyikan hasil
-    form.addEventListener('focusin', function(e) {
-      // Kecuali jika yang difokus adalah tombol submit (agar tidak hilang saat klik submit)
-      if (e.target && e.target.type !== 'submit' && e.target.tagName !== 'BUTTON') {
-        // Tambahkan class d-none untuk menyembunyikan
+    // ============================
+    //  SEMBUNYIKAN HASIL SAAT USER MULAI INPUT
+    // ============================
+    function hideResultOnInteraction() {
+      const resultArea = document.getElementById('resultArea');
+      if (!resultArea.classList.contains('d-none')) {
         resultArea.classList.add('d-none');
-        // Reset isi status dan detail (opsional)
-        document.getElementById('resultStatus').innerText = '';
-        document.getElementById('resultDetail').innerText = '';
+      }
+    }
+
+    // Daftar elemen yang memicu sembunyi hasil
+    const triggerElements = [
+      document.getElementById('judulBeritaAcara'),
+      document.getElementById('jenisUsaha'),
+      document.getElementById('jenisInspeksi'),
+      document.getElementById('metodeInspeksi'),
+      document.getElementById('petugas'),
+      document.getElementById('btnSubmit')
+    ];
+
+    triggerElements.forEach(el => {
+      if (el) {
+        el.addEventListener('focus', hideResultOnInteraction);
+        if (el.tagName === 'SELECT') {
+          el.addEventListener('change', hideResultOnInteraction);
+        }
+        if (el.tagName === 'INPUT') {
+          el.addEventListener('input', hideResultOnInteraction);
+        }
       }
     });
 
-    // ====== SUBMIT FORM ======
+    // Klik di area form (selain tombol submit) juga menyembunyikan hasil
+    document.getElementById('inspectionForm').addEventListener('click', function(e) {
+      if (e.target.id !== 'btnSubmit') {
+        hideResultOnInteraction();
+      }
+    });
+
+    // ============================
+    //  SUBMIT FORM
+    // ============================
     async function submitForm(e) {
       e.preventDefault();
+
       const btn = document.getElementById('btnSubmit');
+      const resultArea = document.getElementById('resultArea');
       const resultStatus = document.getElementById('resultStatus');
       const resultDetail = document.getElementById('resultDetail');
 
@@ -200,6 +250,13 @@
       const ePetugas = document.getElementById('petugas');
       const eTimestamp = document.getElementById('timestampInput').value;
 
+      if (!ePetugas.value.trim()) {
+        alert('⚠️ Nama petugas harus diisi!');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>Generate & Simpan Nomor';
+        return;
+      }
+
       const payload = {
         timestamp: eTimestamp,
         judulBeritaAcara: eJudulBA.value,
@@ -209,10 +266,9 @@
         jenisInspeksiText: eInspeksi.options[eInspeksi.selectedIndex].text,
         metodeInspeksi: eMetode.value,
         metodeInspeksiText: eMetode.options[eMetode.selectedIndex].text,
-        petugas: ePetugas.value
+        petugas: ePetugas.value.trim()
       };
 
-      // Tampilkan result area (akan diisi)
       resultArea.classList.remove('d-none');
 
       try {
@@ -228,12 +284,15 @@
           resultArea.className = 'result-box bg-success bg-opacity-10 text-success';
           resultStatus.innerText = "✓ Data Tersimpan!";
           resultDetail.innerText = result.nomor;
-          // Reset form
+
+          localStorage.setItem('petugasTerakhir', ePetugas.value.trim());
+
+          // Reset form (petugas tetap diisi)
           eJudulBA.value = "";
           eUsaha.value = "";
           eInspeksi.value = "";
           eMetode.value = "";
-          ePetugas.value = "";
+          ePetugas.value = localStorage.getItem('petugasTerakhir') || '';
         } else {
           throw new Error(result.message || 'Gagal menyimpan');
         }
@@ -246,14 +305,6 @@
         btn.innerHTML = '<i class="fas fa-save me-2"></i>Generate & Simpan Nomor';
         resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }
-    // Registrasi Service Worker untuk PWA (Taruh di paling bawah script)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker terdaftar!', reg))
-          .catch(err => console.error('Service Worker gagal:', err));
-      });
     }
   </script>
 </body>
