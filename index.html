@@ -1,25 +1,29 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistem Penomoran Inspeksi</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background-color: #f0f2f5; }
-    .sidebar {
-      background-color: #1e2a3a; min-height: 100vh; width: 260px; position: fixed; top: 0; left: 0;
-      padding: 1.5rem 1rem; color: #fff; transition: all 0.3s; z-index: 1000; display: flex; flex-direction: column;
-    }
+    body { background-color: #f0f2f5; overflow-x: hidden; }
+    .sidebar { background-color: #1e2a3a; width: 260px; height: 100vh; position: fixed; top: 0; left: 0; padding: 1.5rem 1rem; color: #fff; display: flex; flex-direction: column; transition: transform 0.3s; z-index: 1050; box-shadow: 2px 0 8px rgba(0,0,0,0.15); overflow-y: auto; }
     .sidebar .brand { font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid #3a4a5e; padding-bottom: 0.75rem; margin-bottom: 1.5rem; text-align: center; }
-    .sidebar .nav-link { color: #b0c4de; padding: 0.7rem 1rem; border-radius: 0.4rem; transition: background 0.2s, color 0.2s; text-decoration: none; display: block; }
+    .sidebar .nav-link { color: #b0c4de; padding: 0.7rem 1rem; border-radius: 0.4rem; transition: background 0.2s, color 0.2s; text-decoration: none; display: block; cursor: pointer; }
     .sidebar .nav-link:hover, .sidebar .nav-link.active { background-color: #2c3e56; color: #fff; }
     .sidebar .nav-link i { margin-right: 0.75rem; width: 1.25rem; text-align: center; }
     .sidebar .nav-link.spreadsheet-link { color: #2ecc71; }
     .sidebar .nav-link.spreadsheet-link:hover { background-color: #27ae60; color: #fff; }
     .sidebar .footer-text { margin-top: auto; padding-top: 0.75rem; border-top: 1px solid #3a4a5e; font-size: 0.75rem; color: #8a9aa8; text-align: center; }
-    .main-content { margin-left: 260px; padding: 2rem; min-height: 100vh; }
+    .main-content { margin-left: 260px; padding: 2rem; min-height: 100vh; transition: margin-left 0.3s; }
+    .burger-btn { position: fixed; top: 1rem; left: 1rem; z-index: 1060; background: #1e2a3a; color: #fff; border: none; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 1.5rem; cursor: pointer; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .burger-btn:hover { background: #2c3e56; }
+    @media (max-width: 768px) { .sidebar { width: 280px; transform: translateX(0); } .sidebar.sidebar-collapsed { transform: translateX(-100%); } .main-content { margin-left: 0 !important; padding: 1rem; width: 100%; } .burger-btn { display: block; } }
     .card { border-radius: 1rem; border: none; box-shadow: 0 0.5rem 1.2rem rgba(0,0,0,0.06); }
     .card-header { background: transparent; border-bottom: 1px solid #e9ecef; font-weight: 600; }
     .form-label { font-weight: 500; margin-bottom: 0.25rem; }
@@ -27,214 +31,505 @@
     .form-control:focus, .form-select:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.2); }
     .btn-primary { background-color: #0d6efd; border: none; padding: 0.6rem 1.5rem; font-weight: 500; border-radius: 0.5rem; }
     .btn-primary:hover { background-color: #0b5ed7; }
+    .btn-outline-danger { border-radius: 0.5rem; }
     .result-box { border-radius: 0.75rem; padding: 1rem 1.25rem; margin-top: 1.5rem; }
-    .result-box .nomor { font-size: 1.5rem; font-weight: 700; font-family: 'Courier New', monospace; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 0.4rem; display: inline-block; }
-    @media (max-width: 768px) {
-      .sidebar { width: 100%; position: relative; min-height: auto; flex-direction: row; flex-wrap: wrap; padding: 0.75rem 1rem; justify-content: space-between; align-items: center; }
-      .sidebar .brand { border-bottom: none; margin-bottom: 0; padding-bottom: 0; font-size: 1rem; }
-      .sidebar .nav { flex-direction: row !important; gap: 0.25rem; flex-wrap: wrap; }
-      .sidebar .nav-link { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
-      .sidebar .footer-text { display: none; }
-      .main-content { margin-left: 0; padding: 1rem; }
-    }
+    .result-box .nomor { font-size: 1.5rem; font-weight: 700; font-family: 'Courier New', monospace; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 0.4rem; display: inline-block; cursor: pointer; }
+    .petugas-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .petugas-row .form-select { flex: 1; }
+    .petugas-row .btn-remove { flex-shrink: 0; padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+    #tambahPetugasBtn { margin-top: 0.5rem; }
+    @media (max-width: 576px) { .petugas-row { flex-wrap: wrap; } }
+    #renlakPage { display: none; }
+    #renlakPage .table-responsive { max-height: 65vh; overflow-y: auto; }
+    .table-renlak th { background-color: #1e2a3a; color: #fff; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
+    .filter-group .form-select { min-width: 180px; }
+    @media (max-width: 768px) { .filter-group .form-select { min-width: 100%; margin-bottom: 0.5rem; } }
+    .table-renlak tbody tr { cursor: pointer; }
+    .table-renlak tbody tr:hover { background-color: #e9ecef; }
   </style>
 </head>
 <body>
 
- <div class="sidebar">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
     <div class="brand"><i class="fas fa-clipboard-list me-2"></i>Sistem Penomoran</div>
     <nav class="nav flex-column">
-      <a href="#" class="nav-link active"><i class="fas fa-edit"></i> Input Data</a>
-      <a href="#" class="nav-link spreadsheet-link" onclick="window.open('https://docs.google.com/spreadsheets/d/1zRrJUe2x6nO62HiEKX73mspp_OnCnna4_LgcoUmhSHs/edit?gid=0#gid=0','_blank')"><i class="fas fa-table"></i> Buka Spreadsheet</a>
-      
-      <!-- Menu Baru: Lihat Renlak -->
-      <a href="#" class="nav-link text-info mt-2" onclick="showRenlakModal(event)"><i class="fas fa-tasks"></i> Lihat Renlak</a>
-      //
-      <!-- Keterangan Renlak -->
-      <div class="renlak-info-box mt-2 p-2 rounded small">
-        <i class="fas fa-info-circle me-1"></i> Menampilkan otomatis sarana yang <b>belum diperiksa</b>. Inputan baru akan mengeliminasi sarana dari daftar ini.
-      </div>
+      <a href="#" class="nav-link active" id="navInput" data-page="form"><i class="fas fa-edit"></i> Input Data</a>
+      <a href="#" class="nav-link" id="navRenlak" data-page="renlak"><i class="fas fa-tasks"></i> Lihat Renlak</a>
+      <a href="#" class="nav-link spreadsheet-link" id="navSpreadsheet" onclick="window.open('https://docs.google.com/spreadsheets/d/1zRrJUe2x6nO62HiEKX73mspp_OnCnna4_LgcoUmhSHs/edit?gid=0#gid=0','_blank')">
+        <i class="fas fa-table"></i> Buka Spreadsheet
+      </a>
     </nav>
     <div class="footer-text"><i class="fas fa-shield-alt me-1"></i> v1.0</div>
   </div>
 
-  <div class="main-content">
+  <!-- BURGER -->
+  <button class="burger-btn" id="burgerBtn" aria-label="Toggle sidebar">
+    <i class="fas fa-times"></i>
+  </button>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content" id="mainContent">
     <div class="container-fluid">
-      <div class="row justify-content-center">
-        <div class="col-lg-9 col-xl-8">
-          <div class="card">
-            <div class="card-header"><h4 class="mb-0"><i class="fas fa-pen-alt me-2"></i>Formulir Inspeksi</h4></div>
-            <div class="card-body">
-              <form id="inspectionForm" onsubmit="submitForm(event)">
 
-                <!-- Timestamp -->
-                <div class="row mb-3">
-                  <div class="col-12">
-                    <label for="timestampInput" class="form-label">Timestamp</label>
-                    <input type="text" id="timestampInput" readonly class="form-control bg-light text-secondary font-monospace">
+      <!-- FORM PAGE -->
+      <div id="formPage">
+        <div class="row justify-content-center">
+          <div class="col-lg-9 col-xl-8">
+            <div class="card">
+              <div class="card-header"><h4 class="mb-0"><i class="fas fa-pen-alt me-2"></i>Formulir Inspeksi</h4></div>
+              <div class="card-body">
+                <form id="inspectionForm" onsubmit="submitForm(event)">
+                  <div class="row mb-3">
+                    <div class="col-12">
+                      <label for="timestampInput" class="form-label">Timestamp</label>
+                      <input type="text" id="timestampInput" readonly class="form-control bg-light text-secondary font-monospace">
+                    </div>
                   </div>
+                  <div class="row mb-3">
+                    <div class="col-12">
+                      <label for="judulBeritaAcara" class="form-label">Nama sarana</label>
+                      <input type="text" id="judulBeritaAcara" required placeholder="Masukkan judul berita acara/nama sarana..." class="form-control">
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="jenisUsaha" class="form-label">Jenis Usaha</label>
+                      <select id="jenisUsaha" required class="form-select">
+                        <option value="" disabled selected>-- Pilih --</option>
+                        <option value="A">A: IOT dan atau IEBA</option>
+                        <option value="B">B: UKOT atau UMOT</option>
+                        <option value="C">C: IF Produksi OBA,OK dan atau SK</option>
+                        <option value="D">D: IP Produksi SK</option>
+                        <option value="F">F: IK Produksi SK</option>
+                        <option value="G">G: Importir OBA,OK dan atau SK</option>
+                        <option value="H">H: BUBP kontrak OBA,OK dan atau SK</option>
+                        <option value="I">I: PBOT dan atau PBF</option>
+                        <option value="J">J: Fasyankes, fasyanfar dan atau IFP</option>
+                        <option value="K">K: Pengecer</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="jenisInspeksi" class="form-label">Jenis Inspeksi</label>
+                      <select id="jenisInspeksi" required class="form-select">
+                        <option value="" disabled selected>-- Pilih --</option>
+                        <option value="ST">ST: sertifikasi/rekomendasi/fasber</option>
+                        <option value="RT">RT: Rutin</option>
+                        <option value="KG">KG: Kasus GMP</option>
+                        <option value="KN">KN: Kasus Non-GMP</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="metodeInspeksi" class="form-label">Metode Inspeksi</label>
+                      <select id="metodeInspeksi" required class="form-select">
+                        <option value="" disabled selected>-- Pilih --</option>
+                        <option value="OI">OI: Onsite Inspection</option>
+                        <option value="RI">RI: Remote Inspection</option>
+                        <option value="HI">HI: Hybrid Inspection</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Nama Petugas</label>
+                      <div id="petugas-container"></div>
+                      <button type="button" id="tambahPetugasBtn" class="btn btn-sm btn-outline-primary mt-1">
+                        <i class="fas fa-plus me-1"></i>Tambah Petugas
+                      </button>
+                    </div>
+                  </div>
+                  <div class="d-grid gap-2 mt-4">
+                    <button type="submit" id="btnSubmit" class="btn btn-primary btn-lg">
+                      <i class="fas fa-save me-2"></i>Generate & Simpan Nomor
+                    </button>
+                  </div>
+                </form>
+                <div id="resultArea" class="result-box d-none">
+                  <p id="resultStatus" class="fw-bold mb-1"></p>
+                  <p id="resultDetail" class="nomor" title="Klik 2x untuk menyalin" ondblclick="navigator.clipboard.writeText(this.innerText); alert('Nomor disalin!');"></p>
+                  <p class="text-muted small mt-2"><i class="fas fa-copy me-1"></i>Klik 2× pada nomor untuk menyalin</p>
                 </div>
-
-                <!-- Judul Berita Acara -->
-                <div class="row mb-3">
-                  <div class="col-12">
-                    <label for="judulBeritaAcara" class="form-label">Judul Berita Acara</label>
-                    <input type="text" id="judulBeritaAcara" required placeholder="Masukkan judul berita acara..." class="form-control">
-                  </div>
-                </div>
-
-                <!-- Jenis Usaha + Jenis Inspeksi -->
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label for="jenisUsaha" class="form-label">Jenis Usaha</label>
-                    <select id="jenisUsaha" required class="form-select">
-                      <option value="" disabled selected>-- Pilih --</option>
-                      <option value="A">A: IOT dan atau IEBA</option>
-                      <option value="B">B: UKOT atau UMOT</option>
-                      <option value="C">C: IF Produksi OBA,OK dan atau SK</option>
-                      <option value="D">D: IP Produksi SK</option>
-                      <option value="F">F: IK Produksi SK</option>
-                      <option value="G">G: Importir OBA,OK dan atau SK</option>
-                      <option value="H">H: BUBP kontrak OBA,OK dan atau SK</option>
-                      <option value="I">I: PBOT dan atau PBF</option>
-                      <option value="J">J: Fasyankes, fasyanfar dan atau IFP</option>
-                      <option value="K">K: Pengecer</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="jenisInspeksi" class="form-label">Jenis Inspeksi</label>
-                    <select id="jenisInspeksi" required class="form-select">
-                      <option value="" disabled selected>-- Pilih --</option>
-                      <option value="ST">ST: sertifikasi/rekomendasi/fasber</option>
-                      <option value="RT">RT: Rutin</option>
-                      <option value="KG">KG: Kasus GMP</option>
-                      <option value="KN">KN: Kasus Non-GMP</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Metode Inspeksi + Petugas -->
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label for="metodeInspeksi" class="form-label">Metode Inspeksi</label>
-                    <select id="metodeInspeksi" required class="form-select">
-                      <option value="" disabled selected>-- Pilih --</option>
-                      <option value="OI">OI: Onsite Inspection</option>
-                      <option value="RI">RI: Remote Inspection</option>
-                      <option value="HI">HI: Hybrid Inspection</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="petugas" class="form-label">Nama Petugas</label>
-                    <input type="text" id="petugas" required placeholder="Nama petugas..." class="form-control">
-                  </div>
-                </div>
-
-                <!-- Tombol Submit -->
-                <div class="d-grid gap-2 mt-4">
-                  <button type="submit" id="btnSubmit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-save me-2"></i>Generate & Simpan Nomor
-                  </button>
-                </div>
-              </form>
-
-              <!-- Hasil -->
-              <div id="resultArea" class="result-box d-none">
-                <p id="resultStatus" class="fw-bold mb-1"></p>
-                <p id="resultDetail" class="nomor"></p>
-                <p class="text-muted small mt-2"><i class="fas fa-copy me-1"></i>Klik 2× pada nomor untuk menyalin</p>
               </div>
-
             </div>
           </div>
         </div>
       </div>
+
+      <!-- RENLAK PAGE -->
+      <div id="renlakPage">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                <h4 class="mb-0"><i class="fas fa-tasks me-2"></i>Renlak Sarana SK (auto update inputdata)</h4>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadRenlakData()">
+                  <i class="fas fa-sync-alt me-1"></i> Refresh
+                </button>
+              </div>
+              <div class="card-body">
+                <!-- FILTER LOKASI & TANGGAL -->
+                <div class="row g-2 mb-3 filter-group">
+                  <div class="col-md-3">
+                    <select id="filterLokasi" class="form-select" onchange="applyFilters()">
+                      <option value="">Semua Lokasi</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select id="filterTanggal" class="form-select" onchange="applyFilters()">
+                      <option value="all">Semua Status</option>
+                      <option value="ada">Sudah dilaksanakan</option>
+                      <option value="kosong">Belum dilaksanakan</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <button class="btn btn-outline-danger btn-sm w-100" onclick="resetFilters()">
+                      <i class="fas fa-undo me-1"></i> Reset
+                    </button>
+                  </div>
+                  <div class="col-md-4 text-end text-muted small">
+                    <i class="fas fa-info-circle me-1"></i> Double-klik baris untuk isi form
+                  </div>
+                </div>
+
+                <div id="renlakLoading" class="text-center py-4">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p class="mt-2">Memuat data...</p>
+                </div>
+                <div id="renlakTableWrap" style="display:none;">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover table-renlak" id="renlakTable">
+                      <thead>
+                        <tr>
+                          <th>No</th>
+                          <th>Sarana</th>
+                          <th>Alamat</th>
+                          <th>Lokasi</th>
+                          <th>Ranking</th>
+                          <th>Rencana</th>
+                          <th>Tanggal Realisasi Pelaksanaan</th>
+                          <th>Petugas</th>
+                          <th>Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody id="renlakTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div id="renlakEmpty" style="display:none;" class="text-center py-4">
+                  <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                  <p class="text-muted">Belum ada data renlak.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // ============================
-    //  KONFIGURASI
-    // ============================
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDVEDVT8asXmjBvhYZRAKSLsnrCDyzMj8MgGxg66ZYf7_pAr8kTX5mLQOo4tbjZAO9/exec";
-
-    // ============================
-    //  TIMESTAMP
-    // ============================
-    function updateTimestampField() {
+    // Set Timestamp Otomatis saat dimuat
+    function updateTimestamp() {
       const now = new Date();
-      const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-      document.getElementById('timestampInput').value = now.toLocaleString('id-ID', options).replace(/\./g, ':');
+      document.getElementById('timestampInput').value = now.toLocaleString('id-ID');
     }
-    updateTimestampField();
-    setInterval(updateTimestampField, 1000);
+    updateTimestamp();
 
-    // ============================
-    //  DOUBLE-CLICK COPY
-    // ============================
-    document.getElementById('resultDetail').addEventListener('dblclick', function() {
-      const text = this.innerText;
-      if (text) {
-        navigator.clipboard.writeText(text).then(() => alert('Nomor disalin: ' + text))
-          .catch(() => { const range = document.createRange(); range.selectNode(this); window.getSelection().removeAllRanges(); window.getSelection().addRange(range); document.execCommand('copy'); alert('Nomor disalin: ' + text); });
-      }
-    });
+    // ================================================================
+    //  KONFIGURASI SUPABASE
+    // ================================================================
+    const SUPABASE_URL = 'https://okaegbgupshbtikrsduh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_hEemclnJE4NPlTApl8Rz3g_drc3KlEF';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ============================
-    //  AUTO-FILL PETUGAS dari localStorage
-    // ============================
-    const inputPetugas = document.getElementById('petugas');
-    const petugasTerakhir = localStorage.getItem('petugasTerakhir');
-    if (petugasTerakhir) {
-      inputPetugas.value = petugasTerakhir;
-    }
-
-    // ============================
-    //  SEMBUNYIKAN HASIL SAAT USER MULAI INPUT
-    // ============================
-    function hideResultOnInteraction() {
-      const resultArea = document.getElementById('resultArea');
-      if (!resultArea.classList.contains('d-none')) {
-        resultArea.classList.add('d-none');
-      }
-    }
-
-    // Daftar elemen yang memicu sembunyi hasil
-    const triggerElements = [
-      document.getElementById('judulBeritaAcara'),
-      document.getElementById('jenisUsaha'),
-      document.getElementById('jenisInspeksi'),
-      document.getElementById('metodeInspeksi'),
-      document.getElementById('petugas'),
-      document.getElementById('btnSubmit')
+    const DUMMY_DATA = [
+      { sarana: 'Apotek Sehat', alamat: 'Jl. Contoh No.1', lokasi: 'Bandung', ranking: 'A', rencana: '-', tgl_realisasi_pelaksanaan: '2026-01-28', petugas: 'Leni', keterangan: 'NIE: SD081534251' },
+      { sarana: 'Klinik Pratama', alamat: 'Jl. Sehat No.2', lokasi: 'Jakarta', ranking: 'B', rencana: '-', tgl_realisasi_pelaksanaan: null, petugas: 'Mila', keterangan: '-' }
     ];
+    let allData = [];
 
-    triggerElements.forEach(el => {
-      if (el) {
-        el.addEventListener('focus', hideResultOnInteraction);
-        if (el.tagName === 'SELECT') {
-          el.addEventListener('change', hideResultOnInteraction);
+    // ================================================================
+    //  LOAD DATA RENLAK
+    // ================================================================
+    async function loadRenlakData() {
+      const loading = document.getElementById('renlakLoading');
+      const tableWrap = document.getElementById('renlakTableWrap');
+      const emptyMsg = document.getElementById('renlakEmpty');
+
+      loading.style.display = 'block';
+      tableWrap.style.display = 'none';
+      emptyMsg.style.display = 'none';
+
+      try {
+        let { data, error } = await supabaseClient
+          .from('renlak_sk_2026')
+          .select('*')
+          .order('no', { ascending: false });
+
+        if (error) {
+          console.warn('Supabase error:', error.message);
+          allData = DUMMY_DATA;
+          alert('⚠️ Gagal mengambil data dari Supabase:\n' + error.message + '\nMenampilkan data dummy.');
+        } else if (!data || data.length === 0) {
+          allData = DUMMY_DATA;
+          alert('⚠️ Data kosong, menampilkan dummy.');
+        } else {
+          allData = data;
+          console.log('✅ Data dari Supabase:', allData.length, 'baris');
         }
-        if (el.tagName === 'INPUT') {
-          el.addEventListener('input', hideResultOnInteraction);
+
+        const lokasiSet = new Set();
+        allData.forEach(row => {
+          let lokasi = row.lokasi || row.tempat_sampling;
+          if (lokasi && lokasi.trim() !== '') {
+            lokasiSet.add(lokasi);
+          }
+        });
+        const filterLokasi = document.getElementById('filterLokasi');
+        filterLokasi.innerHTML = '<option value="">Semua Lokasi</option>';
+        lokasiSet.forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l;
+          opt.textContent = l;
+          filterLokasi.appendChild(opt);
+        });
+        filterLokasi.value = '';
+
+        document.getElementById('filterTanggal').value = 'all';
+
+        renderTable(allData);
+        loading.style.display = 'none';
+        tableWrap.style.display = 'block';
+
+      } catch (err) {
+        loading.style.display = 'none';
+        alert('❌ Error: ' + err.message);
+        console.error(err);
+        allData = DUMMY_DATA;
+        renderTable(allData);
+        tableWrap.style.display = 'block';
+      }
+    }
+
+    // ================================================================
+    //  RENDER TABEL
+    // ================================================================
+    function renderTable(data) {
+      const tbody = document.getElementById('renlakTableBody');
+      tbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        document.getElementById('renlakEmpty').style.display = 'block';
+        document.getElementById('renlakTableWrap').style.display = 'none';
+        return;
+      }
+      data.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        const sarana = row.sarana || row.nama_produk || '-';
+        const alamat = row.alamat || '-';
+        const lokasi = row.lokasi || row.tempat_sampling || '-';
+        const ranking = row.ranking || row.kategori || '-';
+        const rencana = row.rencana || '-';
+        let tanggal = row.tgl_realisasi_pelaksanaan || row.tanggal_waktu || '-';
+        if (tanggal !== '-' && tanggal !== null && tanggal !== '') {
+          try {
+            const d = new Date(tanggal);
+            if (!isNaN(d)) tanggal = d.toLocaleString('id-ID');
+          } catch (e) { /* keep original */ }
+        } else {
+          tanggal = '-';
         }
+        const petugas = row.petugas || '-';
+        const keterangan = row.keterangan || row.nie || row.nomor_batch || '-';
+
+        tr.dataset.sarana = sarana;
+
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${sarana}</td>
+          <td>${alamat}</td>
+          <td>${lokasi}</td>
+          <td>${ranking}</td>
+          <td>${rencana}</td>
+          <td>${tanggal}</td>
+          <td>${petugas}</td>
+          <td>${keterangan}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('renlakEmpty').style.display = 'none';
+      document.getElementById('renlakTableWrap').style.display = 'block';
+    }
+
+    // ================================================================
+    //  DOUBLE-CLICK → ISI FORM
+    // ================================================================
+    document.getElementById('renlakTableBody').addEventListener('dblclick', function(e) {
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      const sarana = tr.dataset.sarana;
+      if (sarana && sarana !== '-') {
+        showPage('form');
+        const inputJudul = document.getElementById('judulBeritaAcara');
+        inputJudul.value = sarana;
+        inputJudul.focus();
+        const resultArea = document.getElementById('resultArea');
+        resultArea.className = 'result-box bg-info bg-opacity-10 text-info d-block';
+        document.getElementById('resultStatus').innerText = '📋 Data siap diisi!';
+        document.getElementById('resultDetail').innerText = 'Nama sarana "' + sarana + '" telah diisi ke form.';
+        document.getElementById('formPage').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => { resultArea.classList.add('d-none'); }, 3000);
       }
     });
 
-    // Klik di area form (selain tombol submit) juga menyembunyikan hasil
-    document.getElementById('inspectionForm').addEventListener('click', function(e) {
-      if (e.target.id !== 'btnSubmit') {
-        hideResultOnInteraction();
-      }
-    });
+    // ================================================================
+    //  FILTER
+    // ================================================================
+    function applyFilters() {
+      const filterLokasi = document.getElementById('filterLokasi').value;
+      const filterTanggal = document.getElementById('filterTanggal').value;
 
-    // ============================
-    //  SUBMIT FORM
-    // ============================
+      let filtered = allData;
+
+      if (filterLokasi) {
+        filtered = filtered.filter(row => {
+          const lokasi = row.lokasi || row.tempat_sampling || '';
+          return lokasi === filterLokasi;
+        });
+      }
+
+      if (filterTanggal === 'ada') {
+        filtered = filtered.filter(row => {
+          const tgl = row.tgl_realisasi_pelaksanaan || row.tanggal_waktu;
+          return tgl && tgl.toString().trim() !== '' && tgl !== '-';
+        });
+      } else if (filterTanggal === 'kosong') {
+        filtered = filtered.filter(row => {
+          const tgl = row.tgl_realisasi_pelaksanaan || row.tanggal_waktu;
+          return !tgl || tgl.toString().trim() === '' || tgl === '-';
+        });
+      }
+
+      renderTable(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById('filterLokasi').value = '';
+      document.getElementById('filterTanggal').value = 'all';
+      applyFilters();
+    }
+
+    // ================================================================
+    //  NAVIGASI
+    // ================================================================
+    const formPage = document.getElementById('formPage');
+    const renlakPage = document.getElementById('renlakPage');
+    const navInput = document.getElementById('navInput');
+    const navRenlak = document.getElementById('navRenlak');
+
+    function showPage(page) {
+      if (page === 'form') {
+        formPage.style.display = 'block';
+        renlakPage.style.display = 'none';
+        navInput.classList.add('active');
+        navRenlak.classList.remove('active');
+      } else if (page === 'renlak') {
+        formPage.style.display = 'none';
+        renlakPage.style.display = 'block';
+        navRenlak.classList.add('active');
+        navInput.classList.remove('active');
+        if (allData.length === 0) loadRenlakData();
+        else renderTable(allData);
+      }
+    }
+
+    navInput.addEventListener('click', function(e) {
+      e.preventDefault();
+      showPage('form');
+      if (window.innerWidth <= 768 && !sidebar.classList.contains('sidebar-collapsed')) toggleSidebar();
+    });
+    navRenlak.addEventListener('click', function(e) {
+      e.preventDefault();
+      showPage('renlak');
+      if (window.innerWidth <= 768 && !sidebar.classList.contains('sidebar-collapsed')) toggleSidebar();
+    });
+    showPage('form');
+
+    const sidebar = document.getElementById('sidebar');
+    const burgerBtn = document.getElementById('burgerBtn');
+    const burgerIcon = burgerBtn.querySelector('i');
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('sidebar-collapsed');
+      burgerIcon.className = sidebar.classList.contains('sidebar-collapsed') ? 'fas fa-bars' : 'fas fa-times';
+    }
+    burgerBtn.addEventListener('click', toggleSidebar);
+
+    // ================================================================
+    //  SERVICE WORKER
+    // ================================================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker terdaftar!', reg))
+          .catch(err => console.warn('Service Worker tidak terdaftar:', err));
+      });
+    }
+
+    // ================================================================
+    //  FORM SUBMIT + UPDATE TANGGAL DI SUPABASE
+    // ================================================================
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDVEDVT8asXmjBvhYZRAKSLsnrCDyzMj8MgGxg66ZYf7_pAr8kTX5mLQOo4tbjZAO9/exec";
+    const DAFTAR_PETUGAS = ['Leni Maryati','Insan Nurul Padjar','Mila Nur Mauludiawati','Fitria Puspawati','Desy Yudiawati','Sufiati','Vinnie','Lusiea','Wenny Warastuti','Nurlaila','Inayah','Santi Nurhayati','Rizqie Noor A','Yanti','Dwi Arun','Ratna Kumalasari','Mimin Siti Aminah','Sari Puspita Dewi','Sri Wiyatno','Aryo Budhi S','Resa Ansi R','Dinny','Evie Prihanita','Euis Sridaryati','Elin','Auliya','Sofy','Sinta'];
+    const container = document.getElementById('petugas-container');
+    const tambahBtn = document.getElementById('tambahPetugasBtn');
+
+    function buatSelectPetugas(selectedValue = '') {
+      const select = document.createElement('select');
+      select.className = 'form-select';
+      select.required = true;
+      const defaultOpt = document.createElement('option');
+      defaultOpt.value = '';
+      defaultOpt.textContent = '-- Pilih Petugas --';
+      defaultOpt.disabled = true;
+      defaultOpt.selected = true;
+      select.appendChild(defaultOpt);
+      DAFTAR_PETUGAS.forEach(nama => {
+        const opt = document.createElement('option');
+        opt.value = nama;
+        opt.textContent = nama;
+        if (nama === selectedValue) opt.selected = true;
+        select.appendChild(opt);
+      });
+      return select;
+    }
+
+    function tambahBarisPetugas(selectedValue = '') {
+      const row = document.createElement('div');
+      row.className = 'petugas-row';
+      const select = buatSelectPetugas(selectedValue);
+      row.appendChild(select);
+      const btnHapus = document.createElement('button');
+      btnHapus.type = 'button';
+      btnHapus.className = 'btn btn-sm btn-outline-danger btn-remove';
+      btnHapus.innerHTML = '<i class="fas fa-times"></i>';
+      btnHapus.addEventListener('click', function() {
+        row.remove();
+        if (container.children.length === 0) tambahBarisPetugas();
+      });
+      row.appendChild(btnHapus);
+      container.appendChild(row);
+    }
+    tambahBarisPetugas();
+    tambahBtn.addEventListener('click', function() { tambahBarisPetugas(); });
+
     async function submitForm(e) {
       e.preventDefault();
-
+      updateTimestamp(); // perbarui jam pengiriman
+      
       const btn = document.getElementById('btnSubmit');
       const resultArea = document.getElementById('resultArea');
       const resultStatus = document.getElementById('resultStatus');
@@ -243,19 +538,22 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Memproses...';
 
-      const eUsaha = document.getElementById('jenisUsaha');
-      const eInspeksi = document.getElementById('jenisInspeksi');
-      const eMetode = document.getElementById('metodeInspeksi');
-      const eJudulBA = document.getElementById('judulBeritaAcara');
-      const ePetugas = document.getElementById('petugas');
-      const eTimestamp = document.getElementById('timestampInput').value;
-
-      if (!ePetugas.value.trim()) {
-        alert('⚠️ Nama petugas harus diisi!');
+      const selects = container.querySelectorAll('select');
+      let petugasList = [];
+      selects.forEach(sel => { if (sel.value) petugasList.push(sel.value); });
+      if (petugasList.length === 0) {
+        alert('⚠️ Pilih minimal 1 nama petugas!');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save me-2"></i>Generate & Simpan Nomor';
         return;
       }
+      const petugasGabung = petugasList.join(', ');
+
+      const eUsaha = document.getElementById('jenisUsaha');
+      const eInspeksi = document.getElementById('jenisInspeksi');
+      const eMetode = document.getElementById('metodeInspeksi');
+      const eJudulBA = document.getElementById('judulBeritaAcara');
+      const eTimestamp = document.getElementById('timestampInput').value;
 
       const payload = {
         timestamp: eTimestamp,
@@ -266,12 +564,16 @@
         jenisInspeksiText: eInspeksi.options[eInspeksi.selectedIndex].text,
         metodeInspeksi: eMetode.value,
         metodeInspeksiText: eMetode.options[eMetode.selectedIndex].text,
-        petugas: ePetugas.value.trim()
+        petugas: petugasGabung
       };
+
+      const existingInfo = resultArea.querySelectorAll('.supabase-info');
+      existingInfo.forEach(el => el.remove());
 
       resultArea.classList.remove('d-none');
 
       try {
+        // 1. Kirim ke Google Apps Script
         const response = await fetch(GAS_WEB_APP_URL, {
           method: 'POST',
           mode: 'cors',
@@ -280,30 +582,82 @@
         });
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const result = await response.json();
+
         if (result.status === 'success') {
           resultArea.className = 'result-box bg-success bg-opacity-10 text-success';
-          resultStatus.innerText = "✓ Data Tersimpan!";
+          resultStatus.innerText = '✓ Data Tersimpan!';
           resultDetail.innerText = result.nomor;
 
-          localStorage.setItem('petugasTerakhir', ePetugas.value.trim());
+          // 2. UPDATE tanggal_realisasi_pelaksanaan di Supabase
+          const sarana = eJudulBA.value.trim();
+          if (sarana) {
+            try {
+              const { data: existingData, error: findError } = await supabaseClient
+                .from('renlak_sk_2026')
+                .select('no, sarana')
+                .eq('sarana', sarana)
+                .maybeSingle();
 
-          // Reset form (petugas tetap diisi)
-          eJudulBA.value = "";
-          eUsaha.value = "";
-          eInspeksi.value = "";
-          eMetode.value = "";
-          ePetugas.value = localStorage.getItem('petugasTerakhir') || '';
+              if (findError) throw findError;
+		if (existingData) {
+                // Format tanggal YYYY-MM-DD agar ramah tipe data date/timestamp Supabase
+                const todayDate = new Date().toISOString().split('T')[0]; 
+
+                const { data: updatedRows, error: updateError } = await supabaseClient
+                  .from('renlak_sk_2026')
+                  .update({ 
+                    tgl_realisasi_pelaksanaan: todayDate,
+                    petugas: petugasGabung
+                  })
+                  .eq('no', existingData.no)
+                  .select(); // Mengembalikan data yang di-update untuk verifikasi
+
+                if (updateError) {
+                  const info = document.createElement('p');
+                  info.className = 'text-danger small mt-2 supabase-info';
+                  info.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Gagal update Supabase: ${updateError.message}`;
+                  resultArea.appendChild(info);
+                } else if (!updatedRows || updatedRows.length === 0) {
+                  // Muncul jika update tertahan RLS (Row Level Security) Supabase
+                  const info = document.createElement('p');
+                  info.className = 'text-warning small mt-2 supabase-info';
+                  info.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Perintah terkirim, tetapi 0 baris ter-update. Periksa izin RLS (Row Level Security) di Dashboard Supabase.`;
+                  resultArea.appendChild(info);
+                } else {
+                  const info = document.createElement('p');
+                  info.className = 'text-success small mt-2 supabase-info';
+                  info.innerHTML = `<i class="fas fa-check-circle me-1"></i> Data sarana "${sarana}" berhasil diperbarui di Supabase (Tgl: ${todayDate}).`;
+                  resultArea.appendChild(info);
+                  
+                  // Perbarui tampilan tabel Renlak secara otomatis
+                  loadRenlakData();
+                }
+              }
+                else {
+                const info = document.createElement('p');
+                info.className = 'text-muted small mt-2 supabase-info';
+                info.innerHTML = `<i class="fas fa-info-circle me-1"></i> Sarana "${sarana}" tidak ditemukan di daftar Renlak.`;
+                resultArea.appendChild(info);
+              }
+            } catch (supabaseErr) {
+              console.error('⚠️ Error proses Supabase:', supabaseErr);
+              const info = document.createElement('p');
+              info.className = 'text-warning small mt-2 supabase-info';
+              info.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Terjadi kesalahan koneksi ke Supabase: ${supabaseErr.message}`;
+              resultArea.appendChild(info);
+            }
+          }
         } else {
-          throw new Error(result.message || 'Gagal menyimpan');
+          throw new Error(result.message || 'Gagal menyimpan ke Sheet');
         }
-      } catch (error) {
+      } catch (err) {
+        console.error('⚠️ Error submit form:', err);
         resultArea.className = 'result-box bg-danger bg-opacity-10 text-danger';
-        resultStatus.innerText = "✗ Gagal:";
-        resultDetail.innerText = error.message;
+        resultStatus.innerText = '❌ Gagal Menyimpan!';
+        resultDetail.innerText = err.message;
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save me-2"></i>Generate & Simpan Nomor';
-        resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   </script>
